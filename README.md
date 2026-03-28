@@ -4,6 +4,9 @@ AI 驱动的全套表情包生成工具，一键生成表情包、Banner、Logo 
 
 ![Product Screenshot](images/20251128-135739.jpg)
 
+## 社区支持
+![linux.do](https://linux.do/)
+
 ## 功能特性
 
 - **表情包生成**: 使用 Gemini Pro 生成 4K 表情包网格 (24 张小图)
