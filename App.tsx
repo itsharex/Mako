@@ -1,13 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Download, Loader2, Sparkles, ImageIcon, Grid, AlertCircle, FileText } from './components/Icons';
+import { Upload, Download, Loader2, Sparkles, ImageIcon, Grid, AlertCircle, FileText, Settings } from './components/Icons';
 import { AppState, SlicedImage, MarketingAsset } from './types';
-import { generateMemeImage, generateBanner, generateLogo, generateMemeMetadata, ensureApiKey } from './services/geminiService';
+import { generateMemeImage, generateBanner, generateLogo, generateMemeMetadata, ensureApiKey, setRuntimeApiKey, setRuntimeBaseUrl, getRuntimeApiKey, getRuntimeBaseUrl } from './services/geminiService';
 import { fileToBase64, sliceMemeGrid, processImage, downloadBatch } from './services/imageUtils';
 
 const App: React.FC = () => {
   const [prompt, setPrompt] = useState<string>('');
   const [refImage, setRefImage] = useState<File | null>(null);
   const [refImagePreview, setRefImagePreview] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [apiKey, setApiKey] = useState<string>(() => {
+    const saved = localStorage.getItem('mako_api_key') || '';
+    if (saved) setRuntimeApiKey(saved);
+    return saved;
+  });
+  const [baseUrl, setBaseUrl] = useState<string>(() => {
+    const saved = localStorage.getItem('mako_base_url') || '';
+    if (saved) setRuntimeBaseUrl(saved);
+    return saved;
+  });
   const [status, setStatus] = useState<AppState>(AppState.IDLE);
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -147,8 +158,47 @@ const App: React.FC = () => {
         {/* LEFT PANEL: Controls */}
         <section className="lg:col-span-4 space-y-6">
           
+          {/* API Settings */}
+          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm overflow-hidden">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="w-full flex items-center justify-between p-4 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                API 设置
+              </span>
+              <span className={`transition-transform ${showSettings ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+            {showSettings && (
+              <div className="px-4 pb-4 space-y-3 border-t border-slate-800">
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mt-3 mb-1">API Key</label>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => { setApiKey(e.target.value); setRuntimeApiKey(e.target.value); localStorage.setItem('mako_api_key', e.target.value); }}
+                    placeholder="留空则使用环境变量"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Base URL</label>
+                  <input
+                    type="text"
+                    value={baseUrl}
+                    onChange={(e) => { setBaseUrl(e.target.value); setRuntimeBaseUrl(e.target.value); localStorage.setItem('mako_base_url', e.target.value); }}
+                    placeholder="例如：https://api.modelverse.cn"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">留空则使用 Google 官方 API 地址</p>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
-            
+
             {/* Reference Image Upload */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-slate-300 mb-2">

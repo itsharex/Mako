@@ -17,36 +17,57 @@ export const ensureApiKey = async (): Promise<boolean> => {
   return true;
 };
 
-const getClient = () => {
-  let apiKey = '';
+// Runtime overrides (set from UI)
+let runtimeApiKey = '';
+let runtimeBaseUrl = '';
 
-  // 1. Try process.env (Node/Webpack/Polyfilled environments)
+export const setRuntimeApiKey = (key: string) => { runtimeApiKey = key; };
+export const setRuntimeBaseUrl = (url: string) => { runtimeBaseUrl = url; };
+export const getRuntimeApiKey = () => runtimeApiKey;
+export const getRuntimeBaseUrl = () => runtimeBaseUrl;
+
+const getEnvVar = (name: string): string => {
   try {
-    // Check type explicitly to prevent ReferenceError if process is undefined
-    if (typeof process !== 'undefined' && process.env) {
-      apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
+    if (typeof process !== 'undefined' && process.env && process.env[name]) {
+      return process.env[name]!;
     }
-  } catch (e) {
-    // Ignore errors accessing process
-  }
-
-  // 2. Try import.meta.env (Vite environments)
+  } catch (e) {}
   try {
     // @ts-ignore
     if (typeof import.meta !== 'undefined' && import.meta.env) {
       // @ts-ignore
-      const env = import.meta.env;
-      apiKey = apiKey || env.VITE_API_KEY || env.VITE_GEMINI_API_KEY || env.GEMINI_API_KEY || '';
+      return import.meta.env[name] || '';
     }
-  } catch (e) {
-    // Ignore errors accessing import.meta
-  }
+  } catch (e) {}
+  return '';
+};
+
+const getClient = () => {
+  const apiKey = runtimeApiKey
+    || getEnvVar('VITE_API_KEY')
+    || getEnvVar('VITE_GEMINI_API_KEY')
+    || getEnvVar('API_KEY')
+    || getEnvVar('GEMINI_API_KEY');
 
   if (!apiKey) {
-    console.warn("Gemini API Key is missing. Please check your .env configuration. For Vite, verify variable starts with VITE_");
+    console.warn("Gemini API Key is missing. Please check your .env configuration or set it in the UI.");
   }
 
-  return new GoogleGenAI({ apiKey });
+  const baseUrl = runtimeBaseUrl
+    || getEnvVar('VITE_GEMINI_BASE_URL')
+    || getEnvVar('GEMINI_BASE_URL');
+
+  const options: Record<string, any> = { apiKey };
+  if (baseUrl) {
+    // Route through local Vite proxy to avoid CORS issues with third-party APIs
+    const proxyBaseUrl = `${window.location.origin}/gemini-proxy`;
+    options.httpOptions = {
+      baseUrl: proxyBaseUrl,
+      headers: { 'x-proxy-target': baseUrl },
+    };
+  }
+
+  return new GoogleGenAI(options);
 };
 
 const extractImage = (response: any): string => {
